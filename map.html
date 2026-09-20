@@ -139,11 +139,16 @@ html, body { margin:0; height:100%; }
 
 <script>
 // ================= CARTE =================
-const map = L.map('map').setView([48.822, 2.337], 20);
+const map = L.map('map').setView([48.822, 2.337], 18);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: 'OpenStreetMap'
-}).addTo(map);
+L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+  {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 20
+  }
+).addTo(map);
 
 // ================= ZONES =================
 const zones = [
