@@ -15,6 +15,13 @@ main{grid-template-columns:240px minmax(0,1fr)}.workspace{position:static;align-
 @media(min-width:1450px){main{grid-template-columns:270px minmax(0,1fr)}}
 @media(max-width:1100px) and (min-width:651px){main{grid-template-columns:200px minmax(0,1fr)}}
 @media(max-width:650px){#beacon-fixed{padding:0}#beacon-form>.aside-title{align-items:flex-start;gap:8px;flex-wrap:wrap}.beacon-actions{width:100%}.beacon-actions #save-beacon{flex:1}}
+/* Approved three-column desktop layout, using the real editable forms. */
+.workspace>.inspector{padding:22px;background:#f4f6f0}.editor-form-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 20px}.editor-form-toolbar h2{font-size:24px;letter-spacing:-.7px;margin:5px 0 0}.editor-form-toolbar .eyebrow{margin:0}.editor-form-toolbar>button{flex-shrink:0}.editor-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}.editor-card{padding:20px;border:1px solid var(--line);background:white;border-radius:14px;min-width:0}.editor-card-heading{display:flex;gap:10px;align-items:center;margin-bottom:20px}.editor-card-heading h3{font-size:15px;letter-spacing:-.2px;margin:0}.editor-card-heading p{font-size:11px;color:var(--muted);line-height:1.5;margin:5px 0 0}.editor-step{display:grid;place-items:center;width:27px;height:27px;flex-shrink:0;border-radius:8px;background:#edf3e8;color:var(--green);font-size:11px}.editor-card label{font-size:11px;margin:14px 0 8px}.editor-card input,.editor-card textarea,.editor-card select{font-size:12px;padding:10px}.editor-card fieldset{padding:12px;margin-bottom:16px}.editor-card .hint{font-size:10px;margin:8px 0 14px}.editor-card .pair{gap:10px}.editor-card .media-field input[type=file]{width:100%;font-size:10px}.editor-card .media-field{background:#fcfdfb}.editor-card .media-thumb{max-height:140px}.editor-card button{font-size:11px;padding:9px 11px}#beacon-fixed .editor-card .full{width:100%;margin:5px 0}#beacon-fixed .editor-card label{margin:14px 0 8px}.editor-discovery{margin:16px 0;font-size:12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 0}.editor-discovery summary{font-weight:650;cursor:pointer}#beacon-access{width:100%;margin-top:8px}#schedule-box{margin-top:20px}.editor-form-toolbar .beacon-actions button{font-size:12px}.map-head{border-top:1px solid var(--line)}
+@media(min-width:1101px){main{grid-template-columns:220px minmax(0,1fr)}}
+@media(min-width:1450px){main{grid-template-columns:240px minmax(0,1fr)}}
+@media(min-width:1001px) and (max-width:1200px){.editor-card{padding:14px}.editor-columns{gap:10px}.workspace>.inspector{padding:16px}main{grid-template-columns:180px minmax(0,1fr)}}
+@media(max-width:1000px){.editor-columns{grid-template-columns:1fr}.editor-form-toolbar{align-items:flex-start}.editor-card{padding:20px}}
+@media(max-width:650px){.workspace>.inspector{padding:14px}.editor-form-toolbar{flex-wrap:wrap;gap:12px}.editor-form-toolbar h2{font-size:22px}.editor-form-toolbar .beacon-actions{width:100%}.editor-form-toolbar .beacon-actions #save-beacon{flex:1}}
 </style></head><body class="editor-locked"><div id="editor-shell">
 <header><a href="index.html" class="brand"><b>↗</b> URBAN RACE <span>ATELIER</span></a><div class="tools"><button id="editor-home">Tous les parcours</button><button id="discard">Annuler les modifications</button><button id="publisher-account">Connexion éditeur</button><button id="publish-button" class="primary" hidden>Publier</button><span id="save-status" role="status">Brouillon serveur</span><button id="import" title="Ajouter un parcours depuis un fichier JSON exporté par cet éditeur">Importer un parcours</button><button id="export">Exporter le brouillon</button><button id="preview" class="primary">Aperçu joueur ↗</button></div></header>
 <section id="editor-dashboard" hidden><p class="eyebrow">ATELIER URBAN RACE</p><h1>Vos parcours</h1><p>Créez, retrouvez et enrichissez vos quêtes. Brouillons et publications sont conservés dans Supabase.</p><button id="editor-refresh">Actualiser les parcours</button><button id="dashboard-new" class="primary">＋ Créer un parcours</button><p id="publisher-status" role="status" class="small"></p><div id="quest-grid"></div></section><div id="editor-workbench"><section class="intro"><div><p class="eyebrow">ESPACE CRÉATION / QUÊTES</p><h1>Le terrain de vos idées.</h1><p>Composez le parcours, placez les balises et donnez vie aux indices.</p></div><div><span class="pill" id="publication-status">Brouillon</span><p class="small" id="publication-detail">Brouillon serveur · non publié</p><button id="save-current" class="primary" type="button">Enregistrer</button><button id="load-publication">Charger la version publiée</button></div></section>
@@ -252,5 +259,37 @@ if(typeof module!=='undefined')module.exports=UrbanPublication;
  setInterval(()=>{if(authorized&&!document.hidden)refreshReports();},60000);
 
  init();refresh();
+})();
+</script><script>'use strict';
+(()=>{
+ // Move existing controls, preserving form ownership and all event handlers.
+ function column(number,title,subtitle){const c=document.createElement('section');c.className='editor-card';const head=document.createElement('div');head.className='editor-card-heading';const n=document.createElement('span');n.className='editor-step';n.textContent=number;const text=document.createElement('div'),h=document.createElement('h3'),p=document.createElement('p');h.textContent=title;p.textContent=subtitle;text.append(h,p);head.append(n,text);c.append(head);return c;}
+ const q=$('quest-form'),b=$('beacon-form');
+ const qCols=[column('01','Présentation','Donner envie d’explorer'),column('02','Photos & thèmes','L’identité visuelle du parcours'),column('03','Récompenses & suivi','Préparer et entretenir le parcours')];
+ const bCols=[column('01','Lieu & position','Identifier et placer la balise'),column('02','Énigmes & indice','Ce que le joueur doit trouver'),column('03','Validation & disponibilité','Règles, récompense et accès')];
+ const has=(node,field,form)=>node.contains(form.elements[field]);
+ function grid(cols){const g=document.createElement('div');g.className='editor-columns';g.append(...cols);return g;}
+ const qTitle=q.querySelector('h2'),qEyebrow=q.querySelector('.eyebrow'),qSave=q.querySelector('button.primary.full');qSave.id='save-quest';qSave.type='submit';qSave.classList.remove('full');qSave.textContent='Enregistrer la quête';
+ const qToolbar=document.createElement('div');qToolbar.className='editor-form-toolbar';const qHeading=document.createElement('div');qHeading.append(qEyebrow,qTitle);qToolbar.append(qHeading,qSave);
+ for(const node of [...q.children]){
+  if(node.matches('[data-media],.theme-fields'))qCols[1].append(node);
+  else if(has(node,'xpReward',q)||has(node,'notes',q)||node.contains($('bulk-xp'))||node.textContent.startsWith('Bonus attribué'))qCols[2].append(node);
+  else qCols[0].append(node);
+ }
+ for(const selector of ['[data-media=coverImage]','[data-media=thumbnailImage]','.theme-fields'])qCols[1].append(qCols[1].querySelector(selector));
+ qCols[2].append(qCols[2].querySelector('[name=notes]').closest('label'));
+ q.append(qToolbar,grid(qCols));
+ const bTitle=b.querySelector('h2'),bTop=b.querySelector('.aside-title'),bLabel=$('beacon-label'),bActions=bTop.querySelector('.beacon-actions');const bToolbar=document.createElement('div');bToolbar.className='editor-form-toolbar';const bHeading=document.createElement('div');bHeading.append(bLabel,bTitle);bToolbar.append(bHeading,bActions);bTop.remove();
+ for(const node of [...b.children]){
+  if(has(node,'description',b)||has(node,'descriptionMedium',b)||node.matches('[data-media=clueImage]')||node.textContent.startsWith('DIFFICILE'))bCols[1].append(node);
+  else if(has(node,'validation',b)||has(node,'password',b)||has(node,'xpReward',b)||has(node,'info',b)||['schedule-box','beacon-access','beacon-access-status'].includes(node.id)||node.textContent.startsWith('Complétez les deux'))bCols[2].append(node);
+  else bCols[0].append(node);
+ }
+ bCols[2].insertBefore(bCols[2].querySelector('#beacon-access'),bCols[2].querySelector('#schedule-box'));bCols[2].insertBefore(bCols[2].querySelector('#beacon-access-status'),bCols[2].querySelector('#schedule-box'));
+ b.append(bToolbar,grid(bCols));
+ // Details keep the form compact; opening them never creates a second copy of the field.
+ const info=b.elements.info.closest('label'),details=document.createElement('details'),summary=document.createElement('summary');details.className='editor-discovery';summary.textContent='Texte après découverte';info.before(details);details.append(summary,info);b.addEventListener('invalid',e=>{if(details.contains(e.target))details.open=true;},true);
+ const titleRefresh=()=>{const z=draft.zones.find(z=>z.id===selected);bTitle.textContent=z?.name||('Balise '+String(selected??'').padStart(2,'0'));qTitle.textContent=draft.title||'Fiche de la quête';};
+ const prevSelect=select;select=function(id){prevSelect(id);titleRefresh();};const prevList=renderList;renderList=function(){prevList();titleRefresh();};titleRefresh();
 })();
 </script></body></html>
