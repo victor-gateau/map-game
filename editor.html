@@ -234,7 +234,21 @@ const UrbanPublication=(()=>{
   const q=remote?.quest,steps=remote?.checkpoints;
   if(!q||!Array.isArray(steps)||(!q.is_active&&!options.allowInactive)||canonical(remote.document)!==canonical(doc)||q.editor_key!==doc.id||q.title!==doc.title||q.description!==doc.description||q.city!==doc.city||q.xp_reward!==doc.xpReward||canonical(q.editor_metadata)!==canonical(metadata(doc)))throw Error('La relecture de la quête ne correspond pas aux données envoyées.');
   if(steps.length!==doc.zones.length||!q.id||!Number.isInteger(q.revision)||q.revision<1)throw Error('Le nombre de balises publiées ne correspond pas au parcours.');
-  const ids=new Set();for(let i=0;i<steps.length;i++){const c=steps[i],z=doc.zones[i];if(ids.has(c.id)||!c.id||c.editor_key!==z.id||c.position!==i+1||c.title!==(z.name||'Balise '+z.id)||c.description!==z.description||c.description_medium!==z.descriptionMedium||c.latitude!==z.lat||c.longitude!==z.lng||c.radius_m!==z.radius||c.discovery_info!==z.info||c.validation_type!==(z.password===undefined?'gps':'code')||c.xp_reward!==z.xpReward||canonical(c.clue_image)!==canonical(z.clueImage)||c.publication_revision!==q.revision)throw Error('Relecture incohérente de la balise '+z.id+'.');ids.add(c.id);}
+  const ids=new Set();
+  for(let i=0;i<steps.length;i++){
+   const c=steps[i],z=doc.zones[i],differences=[];
+   const describe=value=>{if(value===undefined)return 'absent';if(value===null)return 'vide';const text=String(value);return text.length>100?text.slice(0,100)+'…':text;};
+   const check=(label,actual,expected)=>{if(actual!==expected)differences.push(label+' (envoyé : '+describe(expected)+' ; relu : '+describe(actual)+')');};
+   if(!c||!c.id||ids.has(c.id))throw Error('Relecture incohérente de la balise '+z.id+' : identifiant serveur absent ou dupliqué.');
+   check('numéro de balise',c.editor_key,z.id);check('ordre',c.position,i+1);check('titre',c.title,z.name||'Balise '+z.id);
+   check('énigme Facile',c.description,z.description);check('énigme Moyen',c.description_medium,z.descriptionMedium);
+   check('latitude',c.latitude,z.lat);check('longitude',c.longitude,z.lng);check('rayon en mètres',c.radius_m,z.radius);
+   check('information après découverte',c.discovery_info,z.info);check('type de validation',c.validation_type,z.password===undefined?'gps':'code');
+   check('récompense XP',c.xp_reward,z.xpReward);check('version publiée',c.publication_revision,q.revision);
+   if(canonical(c.clue_image)!==canonical(z.clueImage))differences.push('image indice ou ses crédits différents');
+   if(differences.length)throw Error('Relecture incohérente de la balise '+z.id+' : '+differences.join(' ; ')+'. La publication a été envoyée, mais sa conformité n’est pas confirmée. Votre brouillon est conservé.');
+   ids.add(c.id);
+  }
   return {questId:String(q.id),revision:q.revision,publishedAt:q.published_at,checkpointIds:Object.fromEntries(steps.map(c=>[c.editor_key,String(c.id)]))};
  }
  async function digest(doc){const bytes=new TextEncoder().encode(canonical(doc));return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),n=>n.toString(16).padStart(2,'0')).join('');}
