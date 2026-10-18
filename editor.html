@@ -242,7 +242,9 @@ const UrbanPublication=(()=>{
    if(!c||!c.id||ids.has(c.id))throw Error('Relecture incohérente de la balise '+z.id+' : identifiant serveur absent ou dupliqué.');
    check('numéro de balise',c.editor_key,z.id);check('ordre',c.position,i+1);check('titre',c.title,z.name||'Balise '+z.id);
    check('énigme Facile',c.description,z.description);check('énigme Moyen',c.description_medium,z.descriptionMedium);
-   check('latitude',c.latitude,z.lat);check('longitude',c.longitude,z.lng);check('rayon en mètres',c.radius_m,z.radius);
+   // JSON float serialization may discard the last digits; 1e-12 degrees is below a micrometre.
+   const coordinate=(label,actual,expected)=>{if(Number.isFinite(actual)&&Number.isFinite(expected)&&Math.abs(actual-expected)<=1e-12)return;check(label,actual,expected);};
+   coordinate('latitude',c.latitude,z.lat);coordinate('longitude',c.longitude,z.lng);check('rayon en mètres',c.radius_m,z.radius);
    check('information après découverte',c.discovery_info,z.info);check('type de validation',c.validation_type,z.password===undefined?'gps':'code');
    check('récompense XP',c.xp_reward,z.xpReward);check('version publiée',c.publication_revision,q.revision);
    if(canonical(c.clue_image)!==canonical(z.clueImage))differences.push('image indice ou ses crédits différents');
