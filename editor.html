@@ -52,6 +52,13 @@ dialog > .content{padding:24px;min-width:0}dialog .dialog-head{gap:16px}dialog .
 dialog .actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:16px 0}dialog .actions > *{min-width:0;max-width:100%}dialog input[type=checkbox]{display:inline-block;width:auto;margin:0 7px 0 0;vertical-align:middle}
 #translation-dialog{width:min(760px,calc(100vw - 24px))}#translation-dialog .content{overflow-wrap:anywhere}#translation-dialog input[type=file]{max-width:100%}#translation-dialog .actions label{margin:0;flex:1 1 220px}#translation-fields textarea{min-height:110px}
 @media(max-width:650px){.map-position-fields{grid-template-columns:repeat(2,minmax(0,1fr))}#beacon-map-controls{padding:16px}#editor-savebar{left:12px;right:12px;bottom:calc(8px + env(safe-area-inset-bottom))}#editor-savebar #save-current{width:100%}dialog > .content,dialog .preview-body{padding:18px}dialog .dialog-head{padding:16px 18px}}
+
+/* Beacon sheet: identity and availability / riddle and validation. */
+#beacon-form .editor-columns{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.editor-clue-image{margin:18px 0 0;border-top:1px solid var(--line);padding-top:14px}
+.editor-clue-image > summary{cursor:pointer;font-size:13px;font-weight:650;padding:6px 0}
+.editor-clue-image > fieldset{margin-top:12px}
+@media(max-width:1000px){#beacon-form .editor-columns{grid-template-columns:1fr}}
 </style></head><body class="editor-locked"><div id="editor-shell">
 <header><a href="index.html" class="brand"><b>↗</b> URBAN RACE <span>ATELIER</span></a><div class="tools"><button id="editor-home">Tous les parcours</button><button id="discard">Annuler les modifications</button><button id="publisher-account">Connexion éditeur</button><button id="publish-button" class="primary" hidden>Publier</button><span id="save-status" role="status">Brouillon serveur</span><button id="import" title="Ajouter un parcours depuis un fichier JSON exporté par cet éditeur">Importer un parcours</button><button id="export">Exporter le brouillon</button><button id="preview" class="primary">Aperçu joueur ↗</button></div></header>
 <section id="editor-dashboard" hidden><p class="eyebrow">ATELIER URBAN RACE</p><h1>Vos parcours</h1><p>Créez, retrouvez et enrichissez vos quêtes. Brouillons et publications sont conservés dans Supabase.</p><button id="editor-refresh">Actualiser les parcours</button><button id="dashboard-new" class="primary">＋ Créer un parcours</button><p id="publisher-status" role="status" class="small"></p><div id="quest-grid"></div></section><div id="editor-workbench"><section class="intro"><div><p class="eyebrow">ESPACE CRÉATION / QUÊTES</p><h1>Le terrain de vos idées.</h1><p>Composez le parcours, placez les balises et donnez vie aux indices.</p></div><div><span class="pill" id="publication-status">Brouillon</span><p class="small" id="publication-detail">Brouillon serveur · non publié</p><button id="save-current" class="primary" type="button">Enregistrer</button><button id="load-publication">Charger la version publiée</button></div></section>
@@ -369,7 +376,7 @@ if(typeof module!=='undefined')module.exports=UrbanPublication;
  function column(number,title,subtitle){const c=document.createElement('section');c.className='editor-card';const head=document.createElement('div');head.className='editor-card-heading';const n=document.createElement('span');n.className='editor-step';n.textContent=number;const text=document.createElement('div'),h=document.createElement('h3'),p=document.createElement('p');h.textContent=title;p.textContent=subtitle;text.append(h,p);head.append(n,text);c.append(head);return c;}
  const q=$('quest-form'),b=$('beacon-form');
  const qCols=[column('01','Présentation','Donner envie d’explorer'),column('02','Photos & thèmes','L’identité visuelle du parcours'),column('03','Récompenses & suivi','Préparer et entretenir le parcours')];
- const bCols=[column('01','Lieu & position','Identifier et placer la balise'),column('02','Énigmes & indice','Ce que le joueur doit trouver'),column('03','Validation & disponibilité','Règles, récompense et accès')];
+ const bCols=[column('01','Balise',''),column('02','Énigme','')];
  const has=(node,field,form)=>node.contains(form.elements[field]);
  function grid(cols){const g=document.createElement('div');g.className='editor-columns';g.append(...cols);return g;}
  const qTitle=q.querySelector('h2'),qEyebrow=q.querySelector('.eyebrow'),qSave=q.querySelector('button.primary.full');qSave.remove();
@@ -383,15 +390,17 @@ if(typeof module!=='undefined')module.exports=UrbanPublication;
  qCols[2].append(qCols[2].querySelector('[name=notes]').closest('label'));
  q.append(qToolbar,grid(qCols));
  const bTitle=b.querySelector('h2'),bTop=b.querySelector('.aside-title'),bLabel=$('beacon-label'),bActions=bTop.querySelector('.beacon-actions');const bToolbar=document.createElement('div');bToolbar.className='editor-form-toolbar';const bHeading=document.createElement('div');bHeading.append(bLabel,bTitle);bToolbar.append(bHeading,bActions);bTop.remove();
- for(const node of [...b.children]){
-  if(has(node,'description',b)||has(node,'descriptionMedium',b)||node.matches('[data-media=clueImage]')||node.textContent.startsWith('DIFFICILE'))bCols[1].append(node);
-  else if(has(node,'validation',b)||has(node,'password',b)||has(node,'xpReward',b)||has(node,'info',b)||['schedule-box','beacon-access','beacon-access-status'].includes(node.id)||node.textContent.startsWith('Complétez les deux'))bCols[2].append(node);
-  else bCols[0].append(node);
- }
- bCols[2].insertBefore(bCols[2].querySelector('#beacon-access'),bCols[2].querySelector('#schedule-box'));bCols[2].insertBefore(bCols[2].querySelector('#beacon-access-status'),bCols[2].querySelector('#schedule-box'));
+ // Move the actual controls, retaining their values, form ownership and handlers.
+ const validation=b.elements.validation.closest('label'),answer=b.elements.password.closest('label');
+ const easy=b.elements.description.closest('fieldset'),medium=b.elements.descriptionMedium.closest('fieldset');
+ const info=b.elements.info.closest('label'),reward=b.elements.xpReward.closest('label'),image=b.querySelector('[data-media=clueImage]');
+ for(const node of [...b.children])bCols[0].append(node);
+ info.firstChild.textContent='Texte de découverte';reward.firstChild.textContent='Récompense balise (XP)';
+ const details=document.createElement('details'),summary=document.createElement('summary');details.className='editor-clue-image';summary.textContent='Image';details.append(summary,image);
+ bCols[1].append(validation,answer,easy,medium,info,reward,details);
+ bCols[0].append($('beacon-access'),$('beacon-access-status'),$('schedule-box'));
  b.append(bToolbar,grid(bCols));
- // Details keep the form compact; opening them never creates a second copy of the field.
- const info=b.elements.info.closest('label'),details=document.createElement('details'),summary=document.createElement('summary');details.className='editor-discovery';summary.textContent='Texte après découverte';info.before(details);details.append(summary,info);b.addEventListener('invalid',e=>{if(details.contains(e.target))details.open=true;},true);
+ b.addEventListener('invalid',e=>{if(details.contains(e.target))details.open=true;},true);
  const titleRefresh=()=>{const z=draft.zones.find(z=>z.id===selected);bTitle.textContent=z?.name||('Balise '+String(selected??'').padStart(2,'0'));qTitle.textContent=draft.title||'Fiche de la quête';};
  const prevSelect=select;select=function(id){prevSelect(id);titleRefresh();};const prevList=renderList;renderList=function(){prevList();titleRefresh();};titleRefresh();
 })();
