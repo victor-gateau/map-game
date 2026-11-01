@@ -59,6 +59,14 @@ dialog .actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:1
 .editor-clue-image > summary{cursor:pointer;font-size:13px;font-weight:650;padding:6px 0}
 .editor-clue-image > fieldset{margin-top:12px}
 @media(max-width:1000px){#beacon-form .editor-columns{grid-template-columns:1fr}}
+
+#quest-form .editor-columns{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+#quest-form textarea[name=description],#quest-form textarea[name=access]{min-height:180px}
+.editor-cover-details{margin:0 0 20px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.editor-cover-details > summary{cursor:pointer;font-size:14px;font-weight:650;padding:8px 0}
+.editor-cover-details > fieldset{margin-top:12px}
+.access-hour-row .hours-apply-all{grid-column:1/-1;justify-self:start;margin-bottom:8px}
+@media(max-width:1000px){#quest-form .editor-columns{grid-template-columns:1fr}}
 </style><style>/* Mode terrain : une seule carte et les mêmes brouillons que l’éditeur complet. */
 #editor-terrain[hidden]{display:none!important}
 body.editor-terrain-active{overflow:hidden}
@@ -540,7 +548,7 @@ if(typeof module!=='undefined')module.exports=UrbanPublication;
  // Move existing controls, preserving form ownership and all event handlers.
  function column(number,title,subtitle){const c=document.createElement('section');c.className='editor-card';const head=document.createElement('div');head.className='editor-card-heading';const n=document.createElement('span');n.className='editor-step';n.textContent=number;const text=document.createElement('div'),h=document.createElement('h3'),p=document.createElement('p');h.textContent=title;p.textContent=subtitle;text.append(h,p);head.append(n,text);c.append(head);return c;}
  const q=$('quest-form'),b=$('beacon-form');
- const qCols=[column('01','Présentation','Donner envie d’explorer'),column('02','Photos & thèmes','L’identité visuelle du parcours'),column('03','Récompenses & suivi','Préparer et entretenir le parcours')];
+ const qCols=[column('01','Présentation','Donner envie d’explorer'),column('02','Photo, thèmes & récompenses','')];
  const bCols=[column('01','Balise',''),column('02','Énigme','')];
  const has=(node,field,form)=>node.contains(form.elements[field]);
  function grid(cols){const g=document.createElement('div');g.className='editor-columns';g.append(...cols);return g;}
@@ -548,11 +556,11 @@ if(typeof module!=='undefined')module.exports=UrbanPublication;
  const qToolbar=document.createElement('div');qToolbar.className='editor-form-toolbar';const qHeading=document.createElement('div');qHeading.append(qEyebrow,qTitle);qToolbar.append(qHeading);
  for(const node of [...q.children]){
   if(node.matches('[data-media],.theme-fields'))qCols[1].append(node);
-  else if(has(node,'xpReward',q)||has(node,'notes',q)||node.contains($('bulk-xp'))||node.textContent.startsWith('Bonus attribué'))qCols[2].append(node);
+  else if(has(node,'xpReward',q)||has(node,'notes',q)||node.contains($('bulk-xp'))||node.textContent.startsWith('Bonus attribué'))qCols[1].append(node);
   else qCols[0].append(node);
  }
  for(const selector of ['[data-media=coverImage]','[data-media=thumbnailImage]','.theme-fields'])qCols[1].append(qCols[1].querySelector(selector));
- qCols[2].append(qCols[2].querySelector('[name=notes]').closest('label'));
+ qCols[1].append(qCols[1].querySelector('[name=notes]').closest('label'));
  q.append(qToolbar,grid(qCols));
  const bTitle=b.querySelector('h2'),bTop=b.querySelector('.aside-title'),bLabel=$('beacon-label'),bActions=bTop.querySelector('.beacon-actions');const bToolbar=document.createElement('div');bToolbar.className='editor-form-toolbar';const bHeading=document.createElement('div');bHeading.append(bLabel,bTitle);bToolbar.append(bHeading,bActions);bTop.remove();
  // Move the actual controls, retaining their values, form ownership and handlers.
@@ -643,8 +651,15 @@ if(typeof module!=='undefined')module.exports=UrbanPublication;
 </script><script>'use strict';
 (()=>{
  const form=$('quest-form'),box=document.createElement('fieldset');box.id='access-hours';box.innerHTML='<legend>Horaires d’accès au lieu</legend><p class="hint">Heure locale du lieu. Ces informations n’activent ni ne désactivent automatiquement le parcours.</p>';
- UrbanQuestAccess.days.forEach((day,i)=>{const row=document.createElement('div');row.className='access-hour-row';row.innerHTML='<label>'+UrbanQuestAccess.labels.fr[i]+'<select data-day="'+day+'"><option value="unknown">Non renseigné</option><option value="hours">Horaires</option><option value="allDay">Toute la journée</option><option value="closed">Fermé</option></select></label><label>Ouverture<input type="time" data-open="'+day+'"></label><label>Fermeture<input type="time" data-close="'+day+'"></label>';box.append(row);row.querySelector('select').onchange=()=>toggle(row);});
+ UrbanQuestAccess.days.forEach((day,i)=>{const row=document.createElement('div');row.className='access-hour-row';row.innerHTML='<label>'+UrbanQuestAccess.labels.fr[i]+'<select data-day="'+day+'"><option value="unknown">Non renseigné</option><option value="hours">Horaires</option><option value="allDay">Toute la journée</option><option value="closed">Fermé</option></select></label><label>Ouverture<input type="time" data-open="'+day+'"></label><label>Fermeture<input type="time" data-close="'+day+'"></label>';box.append(row);row.querySelector('select').onchange=()=>toggle(row);const apply=document.createElement('button');apply.type='button';apply.className='hours-apply-all';apply.textContent='Appliquer à tous les jours';apply.setAttribute('aria-label','Appliquer les horaires du '+UrbanQuestAccess.labels.fr[i].toLowerCase()+' à tous les jours');apply.onclick=()=>applyAll(row);row.append(apply);});
  const note=document.createElement('p');note.className='hint';note.textContent='Consultez les sites officiels avant votre visite : les horaires peuvent changer, notamment selon la saison.';box.append(note);form.elements.access.closest('label').after(box);
+ function applyAll(row){
+  const status=row.querySelector('select').value,open=row.querySelector('[data-open]').value,close=row.querySelector('[data-close]').value;
+  const value=status==='hours'?{status,open,close}:{status};
+  try{UrbanQuestAccess.validate(Object.fromEntries(UrbanQuestAccess.days.map(day=>[day,value])));}catch(e){toast(e.message);return;}
+  for(const target of box.querySelectorAll('.access-hour-row')){target.querySelector('select').value=status;target.querySelector('[data-open]').value=status==='hours'?open:'';target.querySelector('[data-close]').value=status==='hours'?close:'';toggle(target);}
+  markDirty();toast('Horaires appliqués aux sept jours.');
+ }
  function toggle(row){const on=row.querySelector('select').value==='hours';row.querySelectorAll('input').forEach(e=>{e.disabled=!on;e.required=on;e.closest('label').hidden=!on;});}
  function fill(){for(const day of UrbanQuestAccess.days){const s=box.querySelector('[data-day='+day+']'),h=draft.accessHours?.[day];s.value=h?.status||'unknown';box.querySelector('[data-open='+day+']').value=h?.open||'';box.querySelector('[data-close='+day+']').value=h?.close||'';toggle(s.closest('.access-hour-row'));}}
  const oldSelect=select;select=function(id){oldSelect(id);if(selected===null)fill();};
@@ -839,6 +854,8 @@ if(typeof module!=='undefined')module.exports=UrbanModeReadiness;
 })();
 </script><script>'use strict';
 (()=>{
+ const quest=$('quest-form');for(const key of ['description','access'])quest.elements[key].rows=8;
+ const cover=quest.querySelector('[data-media=coverImage]'),coverDetails=document.createElement('details'),coverSummary=document.createElement('summary');coverDetails.className='editor-cover-details';coverSummary.textContent='Photo de présentation';cover.before(coverDetails);coverDetails.append(coverSummary,cover);quest.addEventListener('invalid',e=>{if(coverDetails.contains(e.target))coverDetails.open=true;},true);
  const form=$('beacon-form'),panel=document.createElement('section');panel.id='beacon-map-controls';panel.hidden=true;panel.setAttribute('aria-label','Position de la balise');
  const title=document.createElement('h3');title.textContent='Position de la balise';panel.append(title);
  const fields=document.createElement('div');fields.className='map-position-fields';
