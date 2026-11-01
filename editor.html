@@ -68,6 +68,8 @@ dialog .actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:1
 .access-hour-row .hours-apply-all{grid-column:1/-1;justify-self:start;margin-bottom:8px}
 @media(max-width:1000px){#quest-form .editor-columns{grid-template-columns:1fr}}
 .fieldwork-gallery{margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}.fieldwork-gallery h3{font-size:14px}.fieldwork-photo-status{font-size:12px;color:var(--muted)}.fieldwork-photo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}.fieldwork-photo-open{padding:0!important;overflow:hidden;background:#edf3e8}.fieldwork-photo-open img{display:block;width:100%;height:130px;object-fit:cover}#fieldwork-photo-dialog{width:min(960px,calc(100vw - 24px))}#fieldwork-photo-dialog img{display:block;max-width:100%;max-height:65dvh;margin:0 auto 16px;object-fit:contain}.fieldwork-download{display:inline-block;color:var(--green);font-weight:650}
+
+.fieldwork-photo-item{min-width:0;display:flex;flex-direction:column;gap:8px}.fieldwork-photo-item > button{width:100%}.fieldwork-use-clue{font-size:12px;white-space:normal}
 </style><style>/* Mode terrain : une seule carte et les mêmes brouillons que l’éditeur complet. */
 #editor-terrain[hidden]{display:none!important}
 body.editor-terrain-active{overflow:hidden}
@@ -1008,12 +1010,24 @@ if(typeof module!=='undefined')module.exports=UrbanModeReadiness;
  }
  const dialog=document.createElement('dialog');dialog.id='fieldwork-photo-dialog';dialog.innerHTML='<div class="dialog-head"><h2>Photo de terrain · privée</h2><button type="button" aria-label="Fermer">×</button></div><div class="preview-body"><img alt=""><a class="fieldwork-download">Télécharger la photo</a></div>';document.body.append(dialog);dialog.querySelector('button').onclick=()=>dialog.close();
  function clearPreview(){dialog.querySelector('img').removeAttribute('src');dialog.querySelector('a').removeAttribute('href');}dialog.addEventListener('close',clearPreview);
+ function useAsClue(owner,photo){
+  const api=window.EditorPublishing,q=draft,epoch=api.sessionVersion;
+  const current=()=>api.authorized&&!api.busy&&!mediaBusy&&!polygonEdit&&q===draft&&epoch===api.sessionVersion&&selected===owner.id&&draft.zones.includes(owner)&&owner.fieldwork?.photos?.some(p=>p.id===photo.id);
+  if(!current())return;
+  const apply=()=>{if(!current()||!captureForm())return;const previous=owner.clueImage;
+   owner.clueImage={src:photo.src,alt:photo.alt||'Image indice'};
+   try{validate(draft);}catch(e){if(previous===undefined)delete owner.clueImage;else owner.clueImage=previous;toast(e.message);return;}
+   markDirty();renderMedia();const details=$('beacon-form').querySelector('.editor-clue-image');if(details)details.open=true;
+   toast('Photo définie comme indice. Enregistrez pour la conserver.');
+  };
+  if(owner.clueImage)confirmAction('Remplacer l’image indice ?','La photo de terrain privée sera conservée.',apply);else apply();
+ }
  function render(){
   const authorized=window.EditorPublishing?.authorized;
   for(const [id,section] of panels){const owner=id==='quest-form'?draft:draft.zones.find(z=>z.id===selected),photos=authorized?(owner?.fieldwork?.photos||[]):[];
    const list=section.querySelector('.fieldwork-photo-grid');list.replaceChildren();section.querySelector('p').textContent=photos.length?photos.length+' photo(s) · privées':'Aucune photo de terrain enregistrée pour cette fiche.';
    photos.forEach((photo,i)=>{const button=document.createElement('button');button.type='button';button.className='fieldwork-photo-open';button.setAttribute('aria-label','Agrandir la photo de terrain '+(i+1));const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt||'Photo de terrain '+(i+1);button.append(img);const q=draft,epoch=window.EditorPublishing.sessionVersion;
-    button.onclick=()=>{if(!window.EditorPublishing.authorized||epoch!==window.EditorPublishing.sessionVersion||q!==draft)return;const image=dialog.querySelector('img'),link=dialog.querySelector('a');image.src=photo.src;image.alt=img.alt;link.href=photo.src;const ext=photo.src.startsWith('data:image/png')?'png':photo.src.startsWith('data:image/webp')?'webp':'jpg';link.download='terrain-'+q.id+'-'+(id==='quest-form'?'parcours':owner.id)+'-'+(i+1)+'.'+ext;dialog.showModal();};list.append(button);});
+    button.onclick=()=>{if(!window.EditorPublishing.authorized||epoch!==window.EditorPublishing.sessionVersion||q!==draft)return;const image=dialog.querySelector('img'),link=dialog.querySelector('a');image.src=photo.src;image.alt=img.alt;link.href=photo.src;const ext=photo.src.startsWith('data:image/png')?'png':photo.src.startsWith('data:image/webp')?'webp':'jpg';link.download='terrain-'+q.id+'-'+(id==='quest-form'?'parcours':owner.id)+'-'+(i+1)+'.'+ext;dialog.showModal();};const card=document.createElement('article');card.className='fieldwork-photo-item';card.append(button);if(id==='beacon-form'){const use=document.createElement('button');use.type='button';use.className='fieldwork-use-clue';use.textContent='Utiliser comme indice';use.disabled=window.EditorPublishing.busy||mediaBusy||!!polygonEdit;use.onclick=()=>useAsClue(owner,photo);card.append(use);}list.append(card);});
   }
  }
  const oldSelect=select;select=function(id){oldSelect(id);render();};window.addEventListener('urban-editor-rendered',render);window.addEventListener('urban-editor-session-change',()=>{dialog.close();clearPreview();render();});render();
