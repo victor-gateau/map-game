@@ -277,7 +277,8 @@ if(typeof module!=='undefined')module.exports=UrbanLandmarksModel;
  const states=['pending','verified','review'];
  function validate(value,image){
   if(value===undefined)return;
-  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!['status','checkedAt','checkedPosition','photos'].includes(k)))throw Error('Fiche de repérage terrain invalide.');
+  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!['status','checkedAt','checkedPosition','photos','relevance'].includes(k)))throw Error('Fiche de repérage terrain invalide.');
+  if(value.relevance!==undefined&&(!Number.isInteger(value.relevance)||value.relevance<0||value.relevance>10))throw Error('La pertinence doit être une note entière de 0 à 10.');
   if(value.status!==undefined&&!states.includes(value.status))throw Error('État de vérification terrain invalide.');
   if(value.checkedAt!==undefined&&(typeof value.checkedAt!=='string'||value.checkedAt.length>40||!Number.isFinite(Date.parse(value.checkedAt))))throw Error('Date de vérification terrain invalide.');
   if(value.checkedPosition!==undefined&&(!Array.isArray(value.checkedPosition)||value.checkedPosition.length!==2||!Number.isFinite(value.checkedPosition[0])||Math.abs(value.checkedPosition[0])>90||!Number.isFinite(value.checkedPosition[1])||Math.abs(value.checkedPosition[1])>180))throw Error('Position de vérification terrain invalide.');
@@ -1114,5 +1115,14 @@ if(typeof module!=='undefined')module.exports=UrbanModeReadiness;
  window.addEventListener('urban-editor-session-change',()=>{generation++;for(const promise of cache.values())promise.then(u=>URL.revokeObjectURL(u)).catch(()=>{});cache.clear();document.querySelectorAll('[data-private-photo]').forEach(e=>{e.removeAttribute(e.tagName==='IMG'?'src':'href');});button.hidden=!api().authorized;});
  button.hidden=!api().authorized;
  window.EditorPhotoStorage={prepare,adopt,data,isRef};scan(document.body);
+})();
+</script><script>'use strict';
+(()=>{
+ const fields=[];
+ function add(parent,before,id){if(!parent)return;const label=document.createElement('label');label.textContent='Pertinence de la balise / 10';label.className='editor-relevance';const input=document.createElement('select');input.id=id;input.add(new Option('Non notée',''));for(let i=0;i<=10;i++)input.add(new Option(i+' / 10',String(i)));label.append(input);parent.insertBefore(label,before);fields.push(input);
+ input.onchange=()=>{const api=window.EditorPublishing,z=draft.zones.find(z=>z.id===selected);if(!api?.authorized||api.busy||mediaBusy||polygonEdit||!z){render();return;}z.fieldwork={...z.fieldwork};if(input.value==='')delete z.fieldwork.relevance;else z.fieldwork.relevance=Number(input.value);fields.forEach(f=>f.value=input.value);markDirty();};}
+ const notes=$('beacon-form').elements.notes.closest('label');add(notes.parentElement,notes,'beacon-relevance');const terrain=$('terrain-verified')?.closest('label');if(terrain)add(terrain.parentElement,terrain,'terrain-relevance');
+ function render(){const api=window.EditorPublishing,z=api?.authorized?draft.zones.find(z=>z.id===selected):null;for(const f of fields){f.value=z?.fieldwork?.relevance??'';f.disabled=!z||!api?.authorized||api.busy||mediaBusy||!!polygonEdit;}}
+ const previous=select;select=function(id){previous(id);render();};window.addEventListener('urban-editor-rendered',render);window.addEventListener('urban-editor-session-change',render);render();
 })();
 </script></body></html>
